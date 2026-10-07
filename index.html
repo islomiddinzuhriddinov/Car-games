@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0a0d15">
+<title>🏎️ AVTO O'YIN</title>
+<style>
+:root{--bg:#0a0d15;--panel:rgba(10,15,30,.96);--tx:#f5f7fa;--mut:#8a96b0;--ac:#ff8800;--ok:#22dd66;--err:#ff4444}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased;user-select:none;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-serif;touch-action:none}
+canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
+#loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(180deg,#0a0d15,#1a0f05);z-index:2000;gap:20px}
+#loading .logo{font-size:80px;animation:bounce 0.8s infinite}
+#loading h1{color:var(--ac);font-size:34px;letter-spacing:3px}
+#loading p{color:var(--mut);font-size:14px}
+.spinner{width:40px;height:40px;border:4px solid rgba(255,136,0,.2);border-top-color:var(--ac);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+#hud{position:fixed;inset:0;pointer-events:none;z-index:100;display:none}
+#hud>*{pointer-events:auto}
+.hud-top{position:absolute;top:0;left:0;right:0;padding:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.hud-card{background:var(--panel);backdrop-filter:blur(10px);border:1px solid rgba(255,136,0,.3);border-radius:12px;padding:8px 14px;font-size:14px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.5);display:flex;align-items:center;gap:10px}
+.hud-card .ac{color:var(--ac)}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--err)}
+.chip.online .dot{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+#hud-user{font-size:12px;font-family:ui-monospace,monospace;color:var(--mut)}
+.hud-bottom{position:absolute;bottom:16px;right:16px;display:flex;flex-direction:column;gap:10px}
+.hud-btn{background:var(--panel);backdrop-filter:blur(10px);border:1px solid rgba(255,136,0,.4);color:var(--tx);border-radius:12px;padding:12px 18px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.5);transition:all .2s;font-family:inherit}
+.hud-btn:hover{background:rgba(255,136,0,.2);transform:translateY(-2px)}
+.speedometer{position:absolute;bottom:16px;left:16px;background:var(--panel);border:1px solid rgba(255,136,0,.3);border-radius:12px;padding:10px 16px;text-align:center}
+.speedometer .val{font-size:28px;color:var(--ac);font-weight:800;line-height:1}
+.speedometer .u{font-size:11px;color:var(--mut);letter-spacing:1px}
+#touch{position:fixed;inset:0;pointer-events:none;z-index:150;display:none}
+.tbtn{position:absolute;background:rgba(10,15,30,.7);border:2px solid rgba(255,136,0,.5);color:var(--tx);border-radius:50%;font-size:26px;font-weight:800;display:flex;align-items:center;justify-content:center;pointer-events:auto;backdrop-filter:blur(6px)}
+.tbtn:active{background:rgba(255,136,0,.4);transform:scale(.95)}
+.tbtn.gas{width:90px;height:90px;bottom:30px;right:30px;font-size:16px}
+.tbtn.brake{width:70px;height:70px;bottom:130px;right:50px;font-size:14px}
+.tbtn.left{width:70px;height:70px;bottom:30px;left:30px;font-size:32px}
+.tbtn.right{width:70px;height:70px;bottom:30px;left:120px;font-size:32px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px;overflow-y:auto}
+.modal.open{display:flex}
+.modal-content{background:var(--panel);border:1px solid var(--ac);border-radius:16px;padding:24px;max-width:520px;width:100%;box-shadow:0 12px 48px rgba(0,0,0,.7);max-height:90vh;overflow-y:auto;position:relative}
+.modal-content h2{color:var(--ac);font-size:22px;margin-bottom:16px;letter-spacing:1px;text-align:center}
+.modal-content .close-x{position:absolute;top:12px;right:12px;background:none;border:0;color:var(--mut);font-size:24px;cursor:pointer}
+.modal-content button.x{width:100%;padding:14px;background:linear-gradient(135deg,var(--ac),#ffaa22);color:#1a0800;border:0;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;margin-top:16px;letter-spacing:1px;font-family:inherit}
+.shop-tabs{display:flex;gap:8px;margin-bottom:16px}
+.shop-tabs button{flex:1;padding:10px;background:rgba(42,63,95,.4);border:1px solid transparent;color:var(--mut);border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit}
+.shop-tabs button.active{background:rgba(255,136,0,.15);color:var(--ac);border-color:var(--ac)}
+.item{background:rgba(255,136,0,.05);border:1px solid rgba(255,136,0,.15);border-radius:10px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.item.owned{border-color:var(--ok);background:rgba(34,221,102,.06)}
+.item.equipped{border-color:var(--ac);background:rgba(255,136,0,.12)}
+.item .info{flex:1;min-width:0}
+.item .name{font-weight:700;font-size:15px;color:var(--tx)}
+.item .meta{font-size:11px;color:var(--mut);margin-top:4px}
+.item .meta .sp{color:var(--ok);font-weight:700}
+.item button{padding:8px 14px;border:0;border-radius:8px;font-weight:800;cursor:pointer;font-size:12px;font-family:inherit;white-space:nowrap}
+.item button.buy{background:var(--ac);color:#1a0800}
+.item button.buy:disabled{background:rgba(138,150,176,.3);color:var(--mut);cursor:not-allowed}
+.item button.use,.item button.on{background:var(--ok);color:#002a10}
+#lb-list{list-style:none;display:flex;flex-direction:column;gap:8px}
+#lb-list li{display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(255,136,0,.05);border-radius:10px;font-size:14px}
+#lb-list li.self{background:rgba(34,221,102,.12);border:1px solid var(--ok)}
+#lb-list li .rank{font-weight:800;color:var(--ac);min-width:32px}
+#lb-list li .name{flex:1;font-family:ui-monospace,monospace;font-size:12px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#lb-list li .money{color:var(--ok);font-weight:800}
+#toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--ac);border-radius:10px;padding:12px 20px;font-size:14px;font-weight:700;color:var(--tx);z-index:3000;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.show{opacity:1}
+#toast.ok{border-color:var(--ok)}
+#toast.err{border-color:var(--err)}
+@media(max-width:600px){
+  .hud-card{padding:6px 10px;font-size:12px}
+  #hud-user{display:none}
+  .hud-btn{padding:10px 14px;font-size:12px}
+  .speedometer{padding:8px 12px}
+  .speedometer .val{font-size:22px}
+}
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="loading">
+  <div class="logo">🏎️</div>
+  <h1>AVTO O'YIN</h1>
+  <div class="spinner"></div>
+  <p id="loading-text">Firebase'ga ulanmoqda...</p>
+</div>
+
+<div id="hud">
+  <div class="hud-top">
+    <div class="hud-card"><span class="ac">💰</span><span id="hud-pul">0</span></div>
+    <div class="hud-card chip" id="hud-chip"><span class="dot"></span><span id="hud-user">...</span></div>
+  </div>
+  <div class="speedometer">
+    <div class="val" id="hud-speed">0</div>
+    <div class="u">KM/S</div>
+  </div>
+  <div class="hud-bottom">
+    <button class="hud-btn" id="btn-shop">🛒 <span>DO'KON</span></button>
+    <button class="hud-btn" id="btn-lb">🏆 <span>REYTING</span></button>
+    <button class="hud-btn" id="btn-help">❓ <span>YORDAM</span></button>
+  </div>
+</div>
+
+<div id="touch">
+  <button class="tbtn gas" id="t-gas">GAZ</button>
+  <button class="tbtn brake" id="t-brake">TORMOZ</button>
+  <button class="tbtn left" id="t-left">◀</button>
+  <button class="tbtn right" id="t-right">▶</button>
+</div>
+
+<div class="modal" id="modal-shop">
+  <div class="modal-content">
+    <button class="close-x" data-close>×</button>
+    <h2>🛒 DO'KON</h2>
+    <div class="shop-tabs">
+      <button class="active" data-tab="cars">🚗 MASHINALAR</button>
+      <button data-tab="tuning">⚙️ TUNING</button>
+    </div>
+    <div id="shop-list"></div>
+    <button class="x" data-close>✓ YOPISH</button>
+  </div>
+</div>
+
+<div class="modal" id="modal-lb">
+  <div class="modal-content">
+    <button class="close-x" data-close>×</button>
+    <h2>🏆 REYTING — TOP 20</h2>
+    <ul id="lb-list"><li>Yuklanmoqda...</li></ul>
+    <button class="x" data-close>✓ YOPISH</button>
+  </div>
+</div>
+
+<div class="modal" id="modal-help">
+  <div class="modal-content">
+    <button class="close-x" data-close>×</button>
+    <h2>❓ YORDAM</h2>
+    <p style="line-height:1.9;color:var(--tx);font-size:14px">
+      <b style="color:var(--ac)">🎮 BOSHQARUV:</b><br>
+      • <b>W / ↑</b> — Gaz<br>
+      • <b>S / ↓</b> — Tormoz<br>
+      • <b>A / D / ← →</b> — Chapga / O'ngga<br>
+      • <b>Space</b> — Turbo<br><br>
+      <b style="color:var(--ac)">💰 MAQSAD:</b><br>
+      Yo'lda tangalarni yig'ing → pul to'plang →<br>
+      Do'kondan mashina va tuning oling →<br>
+      Reytingda birinchi bo'ling!<br><br>
+      <b style="color:var(--ac)">💾 SAQLASH:</b><br>
+      Har bir o'zgarish avtomatik Firebase'ga saqlanadi
+    </p>
+    <button class="x" data-close>✓ TUSHUNARLI</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDnF2tzTbKVOOmQi2FzaYDPBg4SClDoWbQ",
+  authDomain: "car-games-e3c99.firebaseapp.com",
+  projectId: "car-games-e3c99",
+  storageBucket: "car-games-e3c99.firebasestorage.app",
+  messagingSenderId: "427499228088",
+  appId: "1:427499228088:web:177c3bc350d06085c71d4d"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const CARS = {
+  bmw:{name:'BMW M5',narx:0,tezlik:1.00,rang:0xffffff,emoji:'🚗'},
+  mercedes:{name:'Mercedes AMG',narx:8000,tezlik:1.20,rang:0x111111,emoji:'🚙'},
+  audi:{name:'Audi RS7',narx:20000,tezlik:1.40,rang:0x777777,emoji:'🚕'},
+  ferrari:{name:'Ferrari F8',narx:50000,tezlik:1.70,rang:0xff2222,emoji:'🏎️'},
+  bugatti:{name:'Bugatti Chiron',narx:120000,tezlik:2.20,rang:0x2266ff,emoji:'🏎️'},
+};
+const TUNING = {
+  turbo:{name:'Turbo',narx:2000,bonus:0.12,emoji:'🌀'},
+  nos:{name:'NOS',narx:3500,bonus:0.18,emoji:'💨'},
+  charkov:{name:'Charkov',narx:1200,bonus:0.05,emoji:'🔧'},
+  spoiler:{name:'Spoiler',narx:1500,bonus:0.04,emoji:'🪽'},
+  gildirak:{name:"G'ildirak",narx:1800,bonus:0.06,emoji:'⚙️'},
+  dvigatel:{name:'Dvigatel',narx:4000,bonus:0.15,emoji:'🔩'},
+  tormoz:{name:'Tormoz',narx:1000,bonus:0.03,emoji:'🛞'},
+  far:{name:'Far/Chiroq',narx:800,bonus:0.02,emoji:'💡'},
+};
+
+const S = {user:null,pul:0,mashina:'bmw',mashinalar:['bmw'],tuning:{},dirty:false,lastSave:0};
+window.S = S;
+
+const $ = id => document.getElementById(id);
+const toastEl = $('toast');
+let toastT;
+function toast(msg,type=''){toastEl.textContent=msg;toastEl.className='show '+type;clearTimeout(toastT);toastT=setTimeout(()=>toastEl.className='',1800);}
+function setPul(v){S.pul=v;$('hud-pul').textContent=Math.round(v).toLocaleString('uz-UZ');}
+
+async function initUser(){
+  try{
+    await signInAnonymously(auth);
+    onAuthStateChanged(auth, async (user)=>{
+      if(!user) return;
+      S.user = user;
+      $('loading-text').textContent = "Profil yuklanmoqda...";
+      const ref = doc(db,'users',user.uid);
+      const snap = await getDoc(ref);
+      if(!snap.exists()){
+        await setDoc(ref,{uid:user.uid,taxallus:'Mehmon '+user.uid.slice(0,6).toUpperCase(),pul:5000,mashina:'bmw',mashinalar:['bmw'],tuning:{},yaratilgan:serverTimestamp(),yangilangan:serverTimestamp()});
+        S.pul = 5000;
+      } else {
+        const d = snap.data();
+        S.pul = d.pul ?? 0;
+        S.mashina = d.mashina ?? 'bmw';
+        S.mashinalar = d.mashinalar ?? ['bmw'];
+        S.tuning = d.tuning ?? {};
+      }
+      setPul(S.pul);
+      $('hud-user').textContent = (snap.data()?.taxallus||'Mehmon').slice(0,10);
+      $('hud-chip').classList.add('online');
+      $('loading').style.display = 'none';
+      $('hud').style.display = 'block';
+      if('ontouchstart' in window || navigator.maxTouchPoints > 0){
+        $('touch').style.display = 'block';
+      }
+      startGame();
+    });
+  }catch(e){
+    console.error(e);
+    $('loading-text').textContent = "❌ Xatolik: " + e.message;
+  }
+}
+initUser();
+
+async function saveUser(force=false){
+  if(!S.user) return;
+  const now = Date.now();
+  if(!force && now - S.lastSave < 4000){S.dirty=true;return;}
+  S.lastSave = now; S.dirty = false;
+  try{
+    await updateDoc(doc(db,'users',S.user.uid),{
+      pul:Math.round(S.pul),mashina:S.mashina,mashinalar:S.mashinalar,tuning:S.tuning,yangilangan:serverTimestamp()
+    });
+  }catch(e){console.error('Save xato:',e);}
+}
+setInterval(()=>{if(S.dirty) saveUser();},6000);
+
+function renderShop(tab='cars'){
+  const list = $('shop-list');
+  list.innerHTML = '';
+  if(tab==='cars'){
+    for(const [key,c] of Object.entries(CARS)){
+      const owned = S.mashinalar.includes(key);
+      const equipped = S.mashina === key;
+      const el = document.createElement('div');
+      el.className = 'item' + (equipped?' equipped':(owned?' owned':''));
+      el.innerHTML = `<div class="info"><div class="name">${c.emoji} ${c.name}</div><div class="meta">Tezlik: <span class="sp">x${c.tezlik.toFixed(2)}</span> · Narx: 💰 ${c.narx.toLocaleString('uz-UZ')}</div></div>${equipped?'<button class="on" disabled>TANLANGAN</button>':owned?`<button class="use" data-buy="car" data-key="${key}">TANLASH</button>`:`<button class="buy" data-buy="car" data-key="${key}" ${S.pul<c.narx?'disabled':''}>SOTIB OLISH</button>`}`;
+      list.appendChild(el);
+    }
+  } else {
+    for(const [key,t] of Object.entries(TUNING)){
+      const has = !!S.tuning[key];
+      const el = document.createElement('div');
+      el.className = 'item' + (has?' owned':'');
+      el.innerHTML = `<div class="info"><div class="name">${t.emoji} ${t.name}</div><div class="meta">Bonus: <span class="sp">+${(t.bonus*100).toFixed(0)}%</span> · Narx: 💰 ${t.narx.toLocaleString('uz-UZ')}</div></div>${has?`<button class="on">✓ YOQILGAN</button>`:`<button class="buy" data-buy="tun" data-key="${key}" ${S.pul<t.narx?'disabled':''}>SOTIB OLISH</button>`}`;
+      list.appendChild(el);
+    }
+  }
+}
+$('shop-list').addEventListener('click',(e)=>{
+  const b = e.target.closest('button'); if(!b) return;
+  const buyType = b.dataset.buy, key = b.dataset.key;
+  if(buyType==='car'){
+    if(!S.mashinalar.includes(key)){
+      const c = CARS[key];
+      if(S.pul < c.narx) return toast('Pul yetarli emas','err');
+      S.pul -= c.narx; S.mashinalar.push(key);
+      setPul(S.pul); toast(`🚗 ${c.name} sotib olindi!`,'ok');
+    }
+    S.mashina = key; rebuildCar(); saveUser(true); renderShop('cars');
+  } else if(buyType==='tun'){
+    const t = TUNING[key];
+    if(S.pul < t.narx) return toast('Pul yetarli emas','err');
+    S.pul -= t.narx; S.tuning[key]=true;
+    setPul(S.pul); toast(`${t.emoji} ${t.name} o'rnatildi`,'ok');
+    saveUser(true); renderShop('tuning');
+  }
+});
+document.querySelectorAll('.shop-tabs button').forEach(btn=>{
+  btn.onclick = ()=>{document.querySelectorAll('.shop-tabs button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');renderShop(btn.dataset.tab);};
+});
+function openModal(id){$(id).classList.add('open');}
+document.querySelectorAll('[data-close]').forEach(el=>{el.onclick=e=>e.target.closest('.modal').classList.remove('open');});
+document.querySelectorAll('.modal').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
+$('btn-shop').onclick = ()=>{renderShop('cars');openModal('modal-shop');};
+$('btn-help').onclick = ()=> openModal('modal-help');
+
+$('btn-lb').onclick = async ()=>{
+  openModal('modal-lb');
+  const list = $('lb-list');
+  list.innerHTML = '<li>Yuklanmoqda...</li>';
+  try{
+    const q = query(collection(db,'users'),orderBy('pul','desc'),limit(20));
+    const snap = await getDocs(q);
+    list.innerHTML = '';
+    if(snap.empty){list.innerHTML="<li>Hozircha bo'sh</li>";return;}
+    let i = 1;
+    snap.forEach(d=>{
+      const data = d.data();
+      const li = document.createElement('li');
+      if(S.user && d.id===S.user.uid) li.classList.add('self');
+      const medal = i===1?'🥇':i===2?'🥈':i===3?'🥉':'#'+i;
+      li.innerHTML = `<span class="rank">${medal}</span><span class="name">${(data.taxallus||'Mehmon').slice(0,14)}</span><span class="money">💰 ${(data.pul||0).toLocaleString('uz-UZ')}</span>`;
+      list.appendChild(li); i++;
+    });
+  }catch(e){
+    console.error(e);
+    list.innerHTML = "<li style='color:var(--err)'>❌ Yuklab bo'lmadi.</li>";
+  }
+};
+
+let renderer,scene,camera,car,carGroup,wheels=[],coins=[],clock;
+const keys = {gas:false,brake:false,left:false,right:false,turbo:false};
+
+function carSpeedMultiplier(){
+  let m = CARS[S.mashina].tezlik;
+  for(const k in S.tuning){if(S.tuning[k] && TUNING[k]) m += TUNING[k].bonus;}
+  return m;
+}
+
+function makeCar(color){
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.0,0.6,4.0),new THREE.MeshStandardMaterial({color,metalness:0.6,roughness:0.3}));
+  body.position.y = 0.55; body.castShadow = true; g.add(body);
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6,0.55,1.8),new THREE.MeshStandardMaterial({color:0x0a0f18,metalness:0.8,roughness:0.1,transparent:true,opacity:0.85}));
+  cabin.position.set(0,1.05,-0.2); cabin.castShadow = true; g.add(cabin);
+  const hl = new THREE.MeshStandardMaterial({color:0xffffaa,emissive:0xffee88,emissiveIntensity:2});
+  [0.6,-0.6].forEach(x=>{const m = new THREE.Mesh(new THREE.BoxGeometry(0.35,0.15,0.1),hl);m.position.set(x,0.65,2.0);g.add(m);});
+  const tl = new THREE.MeshStandardMaterial({color:0xff2222,emissive:0xff0000,emissiveIntensity:2});
+  [0.6,-0.6].forEach(x=>{const m = new THREE.Mesh(new THREE.BoxGeometry(0.35,0.15,0.1),tl);m.position.set(x,0.65,-2.0);g.add(m);});
+  wheels = [];
+  const wheelMat = new THREE.MeshStandardMaterial({color:0x111111,roughness:0.8});
+  const rimMat = new THREE.MeshStandardMaterial({color:0xcccccc,metalness:0.9,roughness:0.2});
+  [[1.0,0.4,1.2],[-1.0,0.4,1.2],[1.0,0.4,-1.2],[-1.0,0.4,-1.2]].forEach(([x,y,z])=>{
+    const w = new THREE.Group();
+    const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,0.3,16),wheelMat);
+    tire.rotation.z = Math.PI/2; w.add(tire);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,0.32,8),rimMat);
+    rim.rotation.z = Math.PI/2; w.add(rim);
+    w.position.set(x,y,z); w.castShadow = true; g.add(w); wheels.push(w);
+  });
+  return g;
+}
+
+function rebuildCar(){
+  if(carGroup) scene.remove(carGroup);
+  carGroup = makeCar(CARS[S.mashina].rang);
+  scene.add(carGroup);
+  car = {speed:0,heading:0,maxSpeed:60*carSpeedMultiplier(),accel:30,brakeF:45,friction:0.965,turnSpeed:2.2};
+}
+
+function makeCoin(x,z){
+  const geo = new THREE.CylinderGeometry(0.4,0.4,0.1,16);
+  const mat = new THREE.MeshStandardMaterial({color:0xffcc00,metalness:0.9,roughness:0.2,emissive:0xaa7700,emissiveIntensity:0.3});
+  const m = new THREE.Mesh(geo,mat);
+  m.position.set(x,1,z); m.rotation.x = Math.PI/2;
+  scene.add(m);
+  coins.push({mesh:m,baseY:1,phase:Math.random()*Math.PI*2});
+}
+
+function makeBuilding(x,z,w,h,d){
+  const colors = [0x2a3f5f,0x3a4a6a,0x1a2a45,0x455570];
+  const mat = new THREE.MeshStandardMaterial({color:colors[Math.floor(Math.random()*colors.length)],metalness:0.3,roughness:0.7});
+  const b = new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  b.position.set(x,h/2,z); b.castShadow = true; b.receiveShadow = true;
+  scene.add(b);
+}
+
+function makeTree(x,z){
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.25,1.5,6),new THREE.MeshStandardMaterial({color:0x5a3a1a,roughness:1}));
+  trunk.position.set(x,0.75,z); trunk.castShadow = true; scene.add(trunk);
+  const leaves = new THREE.Mesh(new THREE.SphereGeometry(0.9,8,8),new THREE.MeshStandardMaterial({color:0x2a7a3a,roughness:1}));
+  leaves.position.set(x,2,z); leaves.castShadow = true; scene.add(leaves);
+}
+
+function initThree(){
+  renderer = new THREE.WebGLRenderer({canvas:$('game'),antialias:true});
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x87b6e0);
+  scene.fog = new THREE.Fog(0x87b6e0,60,200);
+  camera = new THREE.PerspectiveCamera(70,innerWidth/innerHeight,0.1,500);
+  camera.position.set(0,6,12);
+  scene.add(new THREE.AmbientLight(0xffffff,0.5));
+  const sun = new THREE.DirectionalLight(0xfff2cc,1.2);
+  sun.position.set(40,60,20); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048,2048);
+  sun.shadow.camera.left = -80; sun.shadow.camera.right = 80;
+  sun.shadow.camera.top = 80; sun.shadow.camera.bottom = -80;
+  scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0x88bbff,0x445533,0.5));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(600,600),new THREE.MeshStandardMaterial({color:0x3a5a2a,roughness:1}));
+  ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+  const roadMat = new THREE.MeshStandardMaterial({color:0x222222,roughness:0.8});
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(400,20),roadMat);
+  road.rotation.x = -Math.PI/2; road.position.y = 0.01; road.receiveShadow = true; scene.add(road);
+  const road2 = new THREE.Mesh(new THREE.PlaneGeometry(20,400),roadMat.clone());
+  road2.rotation.x = -Math.PI/2; road2.position.y = 0.01; road2.receiveShadow = true; scene.add(road2);
+  const markMat = new THREE.MeshBasicMaterial({color:0xffffff});
+  for(let i=-190;i<=190;i+=8){
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(4,0.4),markMat);
+    m.rotation.x = -Math.PI/2; m.position.set(i,0.02,0); scene.add(m);
+    const m2 = new THREE.Mesh(new THREE.PlaneGeometry(0.4,4),markMat);
+    m2.rotation.x = -Math.PI/2; m2.position.set(0,0.02,i); scene.add(m2);
+  }
+  for(let i=0;i<50;i++){
+    const ang = Math.random()*Math.PI*2;
+    const dist = 40+Math.random()*80;
+    const x = Math.cos(ang)*dist, z = Math.sin(ang)*dist;
+    if(Math.abs(x)<15||Math.abs(z)<15) continue;
+    makeBuilding(x,z,6+Math.random()*6,8+Math.random()*25,6+Math.random()*6);
+  }
+  for(let i=0;i<80;i++){
+    const ang = Math.random()*Math.PI*2;
+    const dist = 15+Math.random()*90;
+    const x = Math.cos(ang)*dist, z = Math.sin(ang)*dist;
+    if(Math.abs(x)<12||Math.abs(z)<12) continue;
+    makeTree(x,z);
+  }
+  for(let i=0;i<40;i++){
+    if(Math.random()<0.5) makeCoin((Math.random()-0.5)*380,0);
+    else makeCoin(0,(Math.random()-0.5)*380);
+  }
+  clock = new THREE.Clock();
+  rebuildCar();
+  animate();
+}
+
+function updatePhysics(dt){
+  if(!car) return;
+  const maxSp = car.maxSpeed;
+  const accel = car.accel*(keys.turbo?1.6:1);
+  if(keys.gas) car.speed += accel*dt;
+  else if(keys.brake) car.speed -= car.brakeF*dt;
+  else car.speed *= car.friction;
+  if(car.speed>maxSp) car.speed = maxSp;
+  if(car.speed<-20) car.speed = -20;
+  if(Math.abs(car.speed)<0.05) car.speed = 0;
+  const speedFactor = Math.min(1,Math.abs(car.speed)/20);
+  const turn = car.turnSpeed*speedFactor*dt;
+  if(keys.left) car.heading += turn*Math.sign(car.speed||1);
+  if(keys.right) car.heading -= turn*Math.sign(car.speed||1);
+  carGroup.position.x += Math.sin(car.heading)*car.speed*dt;
+  carGroup.position.z += Math.cos(car.heading)*car.speed*dt;
+  carGroup.rotation.y = car.heading;
+  const ws = car.speed*dt*2;
+  wheels.forEach(w=>w.rotation.x += ws);
+  const B = 280;
+  carGroup.position.x = Math.max(-B,Math.min(B,carGroup.position.x));
+  carGroup.position.z = Math.max(-B,Math.min(B,carGroup.position.z));
+  $('hud-speed').textContent = Math.abs(Math.round(car.speed*1.5));
+  const camOffset = new THREE.Vector3(0,5.5,-9).applyEuler(new THREE.Euler(0,car.heading,0));
+  const targetCamPos = carGroup.position.clone().add(camOffset);
+  camera.position.lerp(targetCamPos,0.12);
+  const lookAt = carGroup.position.clone(); lookAt.y += 1.2;
+  camera.lookAt(lookAt);
+  const targetFov = 70+(Math.abs(car.speed)/maxSp)*15;
+  camera.fov += (targetFov-camera.fov)*0.05;
+  camera.updateProjectionMatrix();
+}
+
+function updateCoins(dt){
+  const t = performance.now()/1000;
+  for(let i=coins.length-1;i>=0;i--){
+    const c = coins[i];
+    c.mesh.rotation.z += dt*3;
+    c.mesh.position.y = c.baseY+Math.sin(t*2+c.phase)*0.2;
+    const dx = c.mesh.position.x-carGroup.position.x;
+    const dz = c.mesh.position.z-carGroup.position.z;
+    if(dx*dx+dz*dz<4){
+      scene.remove(c.mesh); coins.splice(i,1);
+      S.pul += 100; setPul(S.pul); S.dirty = true;
+      toast('+100 💰','ok');
+      if(Math.random()<0.5) makeCoin((Math.random()-0.5)*380,0);
+      else makeCoin(0,(Math.random()-0.5)*380);
+    }
+  }
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(),0.05);
+  updatePhysics(dt);
+  updateCoins(dt);
+  renderer.render(scene,camera);
+}
+
+window.addEventListener('keydown',e=>{
+  const k = e.key.toLowerCase();
+  if(k==='w'||k==='arrowup') keys.gas=true;
+  if(k==='s'||k==='arrowdown') keys.brake=true;
+  if(k==='a'||k==='arrowleft') keys.left=true;
+  if(k==='d'||k==='arrowright') keys.right=true;
+  if(k===' ') keys.turbo=true;
+  if(['w','s','a','d','arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
+});
+window.addEventListener('keyup',e=>{
+  const k = e.key.toLowerCase();
+  if(k==='w'||k==='arrowup') keys.gas=false;
+  if(k==='s'||k==='arrowdown') keys.brake=false;
+  if(k==='a'||k==='arrowleft') keys.left=false;
+  if(k==='d'||k==='arrowright') keys.right=false;
+  if(k===' ') keys.turbo=false;
+});
+
+function bindTouch(id,key){
+  const el = $(id);
+  const on = e=>{e.preventDefault();keys[key]=true;};
+  const off = e=>{e.preventDefault();keys[key]=false;};
+  el.addEventListener('touchstart',on,{passive:false});
+  el.addEventListener('touchend',off,{passive:false});
+  el.addEventListener('touchcancel',off,{passive:false});
+  el.addEventListener('mousedown',on);
+  el.addEventListener('mouseup',off);
+  el.addEventListener('mouseleave',off);
+}
+bindTouch('t-gas','gas');
+bindTouch('t-brake','brake');
+bindTouch('t-left','left');
+bindTouch('t-right','right');
+
+window.addEventListener('resize',()=>{
+  if(renderer){
+    renderer.setSize(innerWidth,innerHeight);
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+  }
+});
+
+function startGame(){
+  if(!renderer) initThree();
+}
+
+window.addEventListener('beforeunload',()=>{saveUser(true);});
+</script>
+</body>
+</html>
